@@ -1,0 +1,8 @@
+{
+  "governanceToken": "0x0520d8F7a1926A444C6Af49b2BFc76EE4ed9C918",
+  "treasuryDAO": "0x907e1DfDEF30bFa731B237B1EBEa7d38193Cd743",
+  "budgetManager": "0xf8D46BC627C6c1aC19103E89B290DA01beF8AFAd",
+  "deployer": "0x5C685A4be579614e6eE12A291D0847E3b6513D59",
+  "network": "sepolia",
+  "timestamp": "2025-11-30T14:56:47.637Z"
+}

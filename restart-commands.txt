@@ -1,0 +1,17 @@
+close everything ( node , hardhat , frontend )
+
+Run commands: 
+
+1. npm run node ( starts hardhat )
+
+2. npm run deploy:localhost   ( deploys the contracts again to hardhat )
+
+3. npm run frontend ( starts the frontend )
+
+
+------------------------------------------------------------------------------
+
+
+IMPORTED ACCOUNT is the main account 
+
+If any other account is made , transfer GOV and ETH tokens from the main account to the new account

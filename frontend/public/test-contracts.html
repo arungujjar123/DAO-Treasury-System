@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Quick Contract Test</title>
+    <script src="https://cdn.jsdelivr.net/npm/ethers@6.7.1/dist/ethers.umd.min.js"></script>
+  </head>
+  <body>
+    <h1>Quick Contract Test</h1>
+    <div id="results"></div>
+
+    <script>
+      async function testContracts() {
+        const results = document.getElementById("results");
+
+        try {
+          // Load ABIs
+          results.innerHTML += "<p>Loading ABIs...</p>";
+          const abisResponse = await fetch("/contracts/abis.json");
+          const abis = await abisResponse.json();
+          results.innerHTML +=
+            "<p>✅ ABIs loaded: " + Object.keys(abis).length + " contracts</p>";
+
+          // Load addresses
+          results.innerHTML += "<p>Loading addresses...</p>";
+          const addressesResponse = await fetch("/contracts/deployments.json");
+          const deployments = await addressesResponse.json();
+          results.innerHTML += "<p>✅ Addresses loaded</p>";
+          results.innerHTML +=
+            "<p>GovernanceToken: " + deployments.governanceToken + "</p>";
+          results.innerHTML +=
+            "<p>TreasuryDAO: " + deployments.treasuryDAO + "</p>";
+
+          // Connect to provider
+          results.innerHTML += "<p>Connecting to Hardhat node...</p>";
+          const provider = new ethers.JsonRpcProvider("http://127.0.0.1:8545");
+          results.innerHTML += "<p>✅ Connected to provider</p>";
+
+          // Create contract instances
+          results.innerHTML += "<p>Creating contract instances...</p>";
+          const treasuryDAO = new ethers.Contract(
+            deployments.treasuryDAO,
+            abis.TreasuryDAO,
+            provider
+          );
+          results.innerHTML += "<p>✅ TreasuryDAO contract created</p>";
+
+          // Test a contract call
+          results.innerHTML += "<p>Testing contract call...</p>";
+          const proposalCount = await treasuryDAO.proposalCount();
+          results.innerHTML +=
+            "<p>✅ Proposal Count: " + proposalCount.toString() + "</p>";
+
+          const balance = await treasuryDAO.getTreasuryBalance();
+          results.innerHTML +=
+            "<p>✅ Treasury Balance: " +
+            ethers.formatEther(balance) +
+            " ETH</p>";
+
+          results.innerHTML +=
+            '<h2 style="color: green;">🎉 All tests passed!</h2>';
+        } catch (error) {
+          results.innerHTML +=
+            '<h2 style="color: red;">❌ Error: ' + error.message + "</h2>";
+          console.error(error);
+        }
+      }
+
+      // Run tests when page loads
+      testContracts();
+    </script>
+  </body>
+</html>
