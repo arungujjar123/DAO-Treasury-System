@@ -40,13 +40,13 @@ function App() {
   };
 
   return (
-    <div className="app-container">
+    <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <header className="app-header">
+      <header className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center">
-              <h1 className="app-title">
+              <h1 className="text-2xl font-bold text-gray-900">
                 🏛️ DAO Treasury
               </h1>
             </div>
@@ -55,12 +55,12 @@ function App() {
             <div className="flex items-center space-x-4">
               {isConnected ? (
                 <div className="flex items-center space-x-3">
-                  <div className="wallet-info">
-                    {account?.slice(0, 6)}...{account?.slice(-4)}
+                  <div className="text-sm text-gray-600">
+                    Connected: {account?.slice(0, 6)}...{account?.slice(-4)}
                   </div>
                   <button
                     onClick={disconnectWallet}
-                    className="btn-disconnect"
+                    className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors"
                   >
                     Disconnect
                   </button>
@@ -68,7 +68,7 @@ function App() {
               ) : (
                 <button
                   onClick={connectWallet}
-                  className="btn-connect"
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors"
                 >
                   Connect Wallet
                 </button>
@@ -79,15 +79,17 @@ function App() {
       </header>
 
       {/* Navigation */}
-      <nav className="nav-container">
+      <nav className="bg-white shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="nav-tabs">
+          <div className="flex space-x-8">
             {navigation.map((item) => (
               <button
                 key={item.id}
                 onClick={() => setActiveTab(item.id)}
-                className={`nav-tab ${
-                  activeTab === item.id ? "active" : ""
+                className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+                  activeTab === item.id
+                    ? "border-blue-500 text-blue-600"
+                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
                 }`}
               >
                 {item.name}
@@ -98,18 +100,18 @@ function App() {
       </nav>
 
       {/* Main Content */}
-      <main className="main-content fade-in">
+      <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         {isConnected ? (
           renderActiveComponent()
         ) : (
-          <div className="connect-screen">
-            <div className="connect-icon">
-              <span>🔒</span>
+          <div className="text-center py-12">
+            <div className="mx-auto w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+              <span className="text-4xl">🔒</span>
             </div>
-            <h2 className="text-3xl font-bold text-white mb-3">
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">
               Connect Your Wallet
             </h2>
-            <p className="text-lg text-white mb-8" style={{opacity: 0.9}}>
+            <p className="text-gray-600 mb-6">
               Please connect your wallet to access the DAO Treasury Management
               System
             </p>
@@ -150,7 +152,7 @@ function App() {
       </main>
 
       {/* Footer */}
-      <footer className="app-footer mt-12">
+      <footer className="bg-white border-t mt-12">
         <div className="max-w-7xl mx-auto py-4 px-4 sm:px-6 lg:px-8">
           <div className="text-center text-sm text-gray-500">
             <p>
