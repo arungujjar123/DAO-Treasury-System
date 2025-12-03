@@ -15,22 +15,6 @@ export const useWeb3 = () => {
     checkIfWalletIsConnected();
   }, []);
 
-  // Listen for account changes
-  useEffect(() => {
-    if (window.ethereum) {
-      window.ethereum.on("accountsChanged", handleAccountsChanged);
-      window.ethereum.on("chainChanged", handleChainChanged);
-
-      return () => {
-        window.ethereum.removeListener(
-          "accountsChanged",
-          handleAccountsChanged
-        );
-        window.ethereum.removeListener("chainChanged", handleChainChanged);
-      };
-    }
-  }, []);
-
   const checkIfWalletIsConnected = async () => {
     console.log("🔍 [DEBUG] checkIfWalletIsConnected called");
     try {
@@ -167,20 +151,39 @@ export const useWeb3 = () => {
     console.log("Wallet disconnected");
   }, []);
 
-  const handleAccountsChanged = (accounts) => {
-    if (accounts.length === 0) {
-      disconnectWallet();
-    } else {
-      setAccount(accounts[0]);
-      console.log("Account changed to:", accounts[0]);
-    }
-  };
+  const handleAccountsChanged = useCallback(
+    (accounts) => {
+      if (accounts.length === 0) {
+        disconnectWallet();
+      } else {
+        setAccount(accounts[0]);
+        console.log("Account changed to:", accounts[0]);
+      }
+    },
+    [disconnectWallet]
+  );
 
-  const handleChainChanged = (chainId) => {
+  const handleChainChanged = useCallback((chainId) => {
     setChainId(chainId);
     // Reload the page to reset the dapp state
     window.location.reload();
-  };
+  }, []);
+
+  // Listen for account changes
+  useEffect(() => {
+    if (window.ethereum) {
+      window.ethereum.on("accountsChanged", handleAccountsChanged);
+      window.ethereum.on("chainChanged", handleChainChanged);
+
+      return () => {
+        window.ethereum.removeListener(
+          "accountsChanged",
+          handleAccountsChanged
+        );
+        window.ethereum.removeListener("chainChanged", handleChainChanged);
+      };
+    }
+  }, [handleAccountsChanged, handleChainChanged]);
 
   const switchToNetwork = async (targetChainId) => {
     try {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { ethers } from "ethers";
 import { useWeb3 } from "../hooks/useWeb3";
 import { ContractHelper, formatNumber } from "../utils/contractHelpers";
@@ -18,19 +18,8 @@ const Dashboard = () => {
   const [depositAmount, setDepositAmount] = useState("");
   const [depositing, setDepositing] = useState(false);
 
-  useEffect(() => {
-    if (provider) {
-      initializeContracts();
-    }
-  }, [provider, signer]);
-
-  useEffect(() => {
-    if (contractHelper && account) {
-      loadDashboardData();
-    }
-  }, [contractHelper, account]);
-
-  const initializeContracts = async () => {
+  const initializeContracts = useCallback(async () => {
+    if (!provider) return;
     try {
       const helper = new ContractHelper(provider, signer);
       await helper.init();
@@ -38,9 +27,10 @@ const Dashboard = () => {
     } catch (error) {
       console.error("Error initializing contracts:", error);
     }
-  };
+  }, [provider, signer]);
 
-  const loadDashboardData = async () => {
+  const loadDashboardData = useCallback(async () => {
+    if (!contractHelper || !account) return;
     try {
       setLoading(true);
 
@@ -75,7 +65,19 @@ const Dashboard = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [contractHelper, account, provider]);
+
+  useEffect(() => {
+    if (provider) {
+      initializeContracts();
+    }
+  }, [provider, initializeContracts]);
+
+  useEffect(() => {
+    if (contractHelper && account) {
+      loadDashboardData();
+    }
+  }, [contractHelper, account, loadDashboardData]);
 
   const handleDeposit = async () => {
     if (!depositAmount || !contractHelper) return;

@@ -1,10 +1,5 @@
 import React, { useState, useEffect } from "react";
-import {
-  BrowserRouter as Router,
-  Routes,
-  Route,
-  NavLink,
-} from "react-router-dom";
+import { BrowserRouter as Router } from "react-router-dom";
 import { useWeb3 } from "./hooks/useWeb3";
 import Dashboard from "./components/Dashboard";
 import ProposalCard from "./components/ProposalCard";
@@ -13,7 +8,6 @@ import Analytics from "./components/Analytics";
 import BudgetPlanning from "./components/BudgetPlanning";
 import RiskAnalytics from "./components/RiskAnalytics";
 import Cashflow from "./components/Cashflow";
-import { Link } from "react-router-dom";
 
 function App() {
   const {

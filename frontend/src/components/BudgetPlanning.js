@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useWeb3 } from "../hooks/useWeb3";
 import { ethers } from "ethers";
 
 const BudgetPlanning = () => {
-  const { provider, signer, account } = useWeb3();
+  const { provider, signer } = useWeb3();
   const [budgetManager, setBudgetManager] = useState(null);
   const [loading, setLoading] = useState(true);
   const [budgets, setBudgets] = useState([]);
@@ -58,19 +58,8 @@ const BudgetPlanning = () => {
     );
   };
 
-  useEffect(() => {
-    if (provider && signer) {
-      initializeContract();
-    }
-  }, [provider, signer]);
-
-  useEffect(() => {
-    if (budgetManager) {
-      loadData();
-    }
-  }, [budgetManager]);
-
-  const initializeContract = async () => {
+  const initializeContract = useCallback(async () => {
+    if (!provider || !signer) return;
     try {
       // Load deployments
       const response = await fetch("/contracts/deployments.json");
@@ -90,9 +79,10 @@ const BudgetPlanning = () => {
     } catch (error) {
       console.error("Error initializing BudgetManager:", error);
     }
-  };
+  }, [provider, signer]);
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
+    if (!budgetManager) return;
     try {
       setLoading(true);
 
@@ -148,7 +138,19 @@ const BudgetPlanning = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [budgetManager]);
+
+  useEffect(() => {
+    if (provider && signer) {
+      initializeContract();
+    }
+  }, [provider, signer, initializeContract]);
+
+  useEffect(() => {
+    if (budgetManager) {
+      loadData();
+    }
+  }, [budgetManager, loadData]);
 
   const handleCreateBudget = async (e) => {
     e.preventDefault();

@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useWeb3 } from "../hooks/useWeb3";
 import { ContractHelper, formatNumber } from "../utils/contractHelpers";
 
 const Analytics = () => {
-  const { provider, signer, account } = useWeb3();
+  const { provider, signer } = useWeb3();
   const [contractHelper, setContractHelper] = useState(null);
   const [loading, setLoading] = useState(true);
   const [analyticsData, setAnalyticsData] = useState({
@@ -16,19 +16,8 @@ const Analytics = () => {
     proposals: [],
   });
 
-  useEffect(() => {
-    if (provider) {
-      initializeContracts();
-    }
-  }, [provider, signer]);
-
-  useEffect(() => {
-    if (contractHelper) {
-      loadAnalyticsData();
-    }
-  }, [contractHelper]);
-
-  const initializeContracts = async () => {
+  const initializeContracts = useCallback(async () => {
+    if (!provider) return;
     try {
       const helper = new ContractHelper(provider, signer);
       await helper.init();
@@ -36,15 +25,20 @@ const Analytics = () => {
     } catch (error) {
       console.error("Error initializing contracts:", error);
     }
-  };
+  }, [provider, signer]);
 
-  const loadAnalyticsData = async () => {
+  useEffect(() => {
+    if (provider) {
+      initializeContracts();
+    }
+  }, [provider, initializeContracts]);
+
+  const loadAnalyticsData = useCallback(async () => {
     try {
       setLoading(true);
 
-      const [treasuryBalance, totalSupply, proposals] = await Promise.all([
+      const [treasuryBalance, proposals] = await Promise.all([
         contractHelper.getTreasuryBalance(),
-        contractHelper.getTotalSupply(),
         contractHelper.getAllProposals(),
       ]);
 
@@ -85,7 +79,13 @@ const Analytics = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [contractHelper]);
+
+  useEffect(() => {
+    if (contractHelper) {
+      loadAnalyticsData();
+    }
+  }, [contractHelper, loadAnalyticsData]);
 
   const getProposalStatusBreakdown = () => {
     const { proposals } = analyticsData;

@@ -1,11 +1,9 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useWeb3 } from "../hooks/useWeb3";
 import { ContractHelper } from "../utils/contractHelpers";
 import {
   LineChart,
   Line,
-  BarChart,
-  Bar,
   XAxis,
   YAxis,
   Tooltip,
@@ -16,7 +14,7 @@ import {
 } from "recharts";
 
 const RiskAnalytics = () => {
-  const { provider, signer, account } = useWeb3();
+  const { provider, signer } = useWeb3();
   const [contractHelper, setContractHelper] = useState(null);
   const [loading, setLoading] = useState(true);
   const [riskMetrics, setRiskMetrics] = useState({
@@ -30,19 +28,8 @@ const RiskAnalytics = () => {
   const [proposals, setProposals] = useState([]);
   const [spendingHistory, setSpendingHistory] = useState([]);
 
-  useEffect(() => {
-    if (provider && signer) {
-      initializeContracts();
-    }
-  }, [provider, signer]);
-
-  useEffect(() => {
-    if (contractHelper) {
-      calculateRiskMetrics();
-    }
-  }, [contractHelper]);
-
-  const initializeContracts = async () => {
+  const initializeContracts = useCallback(async () => {
+    if (!provider || !signer) return;
     try {
       const helper = new ContractHelper(provider, signer);
       await helper.init();
@@ -50,9 +37,26 @@ const RiskAnalytics = () => {
     } catch (error) {
       console.error("Error initializing contracts:", error);
     }
-  };
+  }, [provider, signer]);
 
-  const calculateRiskMetrics = async () => {
+  const generateSpendingHistory = useCallback((executedProposals) => {
+    const history = [];
+    let cumulativeSpent = 0;
+
+    executedProposals.forEach((proposal) => {
+      cumulativeSpent += parseFloat(proposal.amount);
+      history.push({
+        date: proposal.deadline.toLocaleDateString(),
+        spent: cumulativeSpent,
+        amount: parseFloat(proposal.amount),
+      });
+    });
+
+    setSpendingHistory(history);
+  }, []);
+
+  const calculateRiskMetrics = useCallback(async () => {
+    if (!contractHelper) return;
     try {
       setLoading(true);
 
@@ -124,7 +128,19 @@ const RiskAnalytics = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [contractHelper, generateSpendingHistory]);
+
+  useEffect(() => {
+    if (provider && signer) {
+      initializeContracts();
+    }
+  }, [provider, signer, initializeContracts]);
+
+  useEffect(() => {
+    if (contractHelper) {
+      calculateRiskMetrics();
+    }
+  }, [contractHelper, calculateRiskMetrics]);
 
   const calculateHealthScore = (balance, velocity, runway) => {
     let score = 100;
@@ -147,22 +163,6 @@ const RiskAnalytics = () => {
     else if (velocity > 0.01) score -= 10;
 
     return Math.max(0, Math.min(100, score));
-  };
-
-  const generateSpendingHistory = (executedProposals) => {
-    const history = [];
-    let cumulativeSpent = 0;
-
-    executedProposals.forEach((proposal) => {
-      cumulativeSpent += parseFloat(proposal.amount);
-      history.push({
-        date: proposal.deadline.toLocaleDateString(),
-        spent: cumulativeSpent,
-        amount: parseFloat(proposal.amount),
-      });
-    });
-
-    setSpendingHistory(history);
   };
 
   const getRiskColor = (level) => {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useWeb3 } from "../hooks/useWeb3";
 import {
   ContractHelper,
@@ -62,7 +62,6 @@ const ProposalCard = ({ proposalPrefill, onPrefillConsumed }) => {
   const [creating, setCreating] = useState(false);
   const [budgetManager, setBudgetManager] = useState(null);
   const [pendingInitiative, setPendingInitiative] = useState(null);
-  const [syncingBudget, setSyncingBudget] = useState(false);
   const [newProposal, setNewProposal] = useState({
     recipient: "",
     amount: "",
@@ -71,41 +70,8 @@ const ProposalCard = ({ proposalPrefill, onPrefillConsumed }) => {
     durationUnit: "days",
   });
 
-  useEffect(() => {
-    if (provider) {
-      initializeContracts();
-    }
-  }, [provider, signer]);
-
-  useEffect(() => {
-    if (signer) {
-      initializeBudgetManager();
-    }
-  }, [signer]);
-
-  useEffect(() => {
-    if (contractHelper) {
-      loadProposals();
-    }
-  }, [contractHelper]);
-
-  useEffect(() => {
-    if (proposalPrefill && proposalPrefill.recipient) {
-      setShowCreateForm(true);
-      setNewProposal((prev) => ({
-        ...prev,
-        recipient: proposalPrefill.recipient || prev.recipient,
-        amount: proposalPrefill.amount || prev.amount,
-        description:
-          proposalPrefill.description ||
-          `Fund initiative ${proposalPrefill.initiativeName || ""}`,
-      }));
-      setPendingInitiative({ ...proposalPrefill });
-      onPrefillConsumed?.();
-    }
-  }, [proposalPrefill, onPrefillConsumed]);
-
-  const initializeContracts = async () => {
+  const initializeContracts = useCallback(async () => {
+    if (!provider) return;
     try {
       const helper = new ContractHelper(provider, signer);
       await helper.init();
@@ -113,9 +79,9 @@ const ProposalCard = ({ proposalPrefill, onPrefillConsumed }) => {
     } catch (error) {
       console.error("Error initializing contracts:", error);
     }
-  };
+  }, [provider, signer]);
 
-  const initializeBudgetManager = async () => {
+  const initializeBudgetManager = useCallback(async () => {
     if (!signer) return;
     try {
       const [deploymentsRes, abisRes] = await Promise.all([
@@ -137,9 +103,10 @@ const ProposalCard = ({ proposalPrefill, onPrefillConsumed }) => {
     } catch (error) {
       console.error("Error initializing BudgetManager for proposals:", error);
     }
-  };
+  }, [signer]);
 
-  const loadProposals = async () => {
+  const loadProposals = useCallback(async () => {
+    if (!contractHelper) return;
     try {
       setLoading(true);
       const proposalsData = await contractHelper.getAllProposals();
@@ -175,7 +142,41 @@ const ProposalCard = ({ proposalPrefill, onPrefillConsumed }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [contractHelper, account]);
+
+  useEffect(() => {
+    if (provider) {
+      initializeContracts();
+    }
+  }, [provider, initializeContracts]);
+
+  useEffect(() => {
+    if (signer) {
+      initializeBudgetManager();
+    }
+  }, [signer, initializeBudgetManager]);
+
+  useEffect(() => {
+    if (contractHelper) {
+      loadProposals();
+    }
+  }, [contractHelper, loadProposals]);
+
+  useEffect(() => {
+    if (proposalPrefill && proposalPrefill.recipient) {
+      setShowCreateForm(true);
+      setNewProposal((prev) => ({
+        ...prev,
+        recipient: proposalPrefill.recipient || prev.recipient,
+        amount: proposalPrefill.amount || prev.amount,
+        description:
+          proposalPrefill.description ||
+          `Fund initiative ${proposalPrefill.initiativeName || ""}`,
+      }));
+      setPendingInitiative({ ...proposalPrefill });
+      onPrefillConsumed?.();
+    }
+  }, [proposalPrefill, onPrefillConsumed]);
 
   const handleCreateProposal = async () => {
     console.log("📝 [DEBUG] handleCreateProposal called");
@@ -329,7 +330,6 @@ const ProposalCard = ({ proposalPrefill, onPrefillConsumed }) => {
   const syncBudgetAfterExecution = async (proposalId) => {
     if (!budgetManager) return;
     try {
-      setSyncingBudget(true);
       let initiativeMeta = getProposalInitiativeMapping(proposalId);
 
       if (!initiativeMeta) {
@@ -367,7 +367,6 @@ const ProposalCard = ({ proposalPrefill, onPrefillConsumed }) => {
     } catch (error) {
       console.error("⚠️ Failed to sync budget after execution:", error);
     } finally {
-      setSyncingBudget(false);
     }
   };
 

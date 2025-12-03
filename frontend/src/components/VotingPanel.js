@@ -1,9 +1,8 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useWeb3 } from "../hooks/useWeb3";
 import {
   ContractHelper,
   formatAddress,
-  formatDate,
   formatNumber,
   calculateTimeRemaining,
 } from "../utils/contractHelpers";
@@ -17,19 +16,8 @@ const VotingPanel = () => {
   const [executing, setExecuting] = useState({});
   const [userVotingPower, setUserVotingPower] = useState("0");
 
-  useEffect(() => {
-    if (provider) {
-      initializeContracts();
-    }
-  }, [provider, signer]);
-
-  useEffect(() => {
-    if (contractHelper && account) {
-      loadData();
-    }
-  }, [contractHelper, account]);
-
-  const initializeContracts = async () => {
+  const initializeContracts = useCallback(async () => {
+    if (!provider) return;
     try {
       const helper = new ContractHelper(provider, signer);
       await helper.init();
@@ -37,9 +25,10 @@ const VotingPanel = () => {
     } catch (error) {
       console.error("Error initializing contracts:", error);
     }
-  };
+  }, [provider, signer]);
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
+    if (!contractHelper || !account) return;
     try {
       setLoading(true);
 
@@ -84,7 +73,19 @@ const VotingPanel = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [contractHelper, account]);
+
+  useEffect(() => {
+    if (provider) {
+      initializeContracts();
+    }
+  }, [provider, initializeContracts]);
+
+  useEffect(() => {
+    if (contractHelper && account) {
+      loadData();
+    }
+  }, [contractHelper, account, loadData]);
 
   const handleVote = async (proposalId, support) => {
     try {
