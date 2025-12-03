@@ -1,4 +1,3 @@
-
 {
   "version": 2,
   "builds": [
@@ -11,6 +10,10 @@
     }
   ],
   "routes": [
+    {
+      "src": "/contracts/(.*)",
+      "dest": "/contracts/$1"
+    },
     {
       "src": "/static/(.*)",
       "dest": "/static/$1"
