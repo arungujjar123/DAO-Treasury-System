@@ -7,14 +7,62 @@ import {
   formatNumber,
   calculateTimeRemaining,
 } from "../utils/contractHelpers";
+import { ethers } from "ethers";
 
-const ProposalCard = () => {
+const PROPOSAL_INITIATIVE_STORAGE_KEY = "dao-proposal-initiatives";
+
+const readProposalInitiativeStore = () => {
+  if (typeof window === "undefined") return {};
+  try {
+    const raw = window.localStorage.getItem(PROPOSAL_INITIATIVE_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch (error) {
+    console.warn("⚠️ Failed to read proposal initiative store:", error);
+    return {};
+  }
+};
+
+const writeProposalInitiativeStore = (data) => {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(
+      PROPOSAL_INITIATIVE_STORAGE_KEY,
+      JSON.stringify(data)
+    );
+  } catch (error) {
+    console.warn("⚠️ Failed to persist proposal initiative store:", error);
+  }
+};
+
+const setProposalInitiativeMapping = (proposalId, payload) => {
+  const store = readProposalInitiativeStore();
+  store[proposalId] = payload;
+  writeProposalInitiativeStore(store);
+};
+
+const getProposalInitiativeMapping = (proposalId) => {
+  const store = readProposalInitiativeStore();
+  return store[proposalId];
+};
+
+const clearProposalInitiativeMapping = (proposalId) => {
+  const store = readProposalInitiativeStore();
+  if (store[proposalId]) {
+    delete store[proposalId];
+    writeProposalInitiativeStore(store);
+  }
+};
+
+const ProposalCard = ({ proposalPrefill, onPrefillConsumed }) => {
   const { provider, signer, account } = useWeb3();
   const [contractHelper, setContractHelper] = useState(null);
   const [proposals, setProposals] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [budgetManager, setBudgetManager] = useState(null);
+  const [pendingInitiative, setPendingInitiative] = useState(null);
+  const [syncingBudget, setSyncingBudget] = useState(false);
   const [newProposal, setNewProposal] = useState({
     recipient: "",
     amount: "",
@@ -30,10 +78,32 @@ const ProposalCard = () => {
   }, [provider, signer]);
 
   useEffect(() => {
+    if (signer) {
+      initializeBudgetManager();
+    }
+  }, [signer]);
+
+  useEffect(() => {
     if (contractHelper) {
       loadProposals();
     }
   }, [contractHelper]);
+
+  useEffect(() => {
+    if (proposalPrefill && proposalPrefill.recipient) {
+      setShowCreateForm(true);
+      setNewProposal((prev) => ({
+        ...prev,
+        recipient: proposalPrefill.recipient || prev.recipient,
+        amount: proposalPrefill.amount || prev.amount,
+        description:
+          proposalPrefill.description ||
+          `Fund initiative ${proposalPrefill.initiativeName || ""}`,
+      }));
+      setPendingInitiative({ ...proposalPrefill });
+      onPrefillConsumed?.();
+    }
+  }, [proposalPrefill, onPrefillConsumed]);
 
   const initializeContracts = async () => {
     try {
@@ -42,6 +112,30 @@ const ProposalCard = () => {
       setContractHelper(helper);
     } catch (error) {
       console.error("Error initializing contracts:", error);
+    }
+  };
+
+  const initializeBudgetManager = async () => {
+    if (!signer) return;
+    try {
+      const [deploymentsRes, abisRes] = await Promise.all([
+        fetch("/contracts/deployments.json"),
+        fetch("/contracts/abis.json"),
+      ]);
+      if (!deploymentsRes.ok || !abisRes.ok) {
+        console.error("Failed loading BudgetManager deployment data");
+        return;
+      }
+      const deployments = await deploymentsRes.json();
+      const abis = await abisRes.json();
+      const contract = new ethers.Contract(
+        deployments.budgetManager,
+        abis.BudgetManager,
+        signer
+      );
+      setBudgetManager(contract);
+    } catch (error) {
+      console.error("Error initializing BudgetManager for proposals:", error);
     }
   };
 
@@ -143,6 +237,21 @@ const ProposalCard = () => {
         logs: receipt.logs?.length,
       });
 
+      if (budgetManager && pendingInitiative) {
+        try {
+          const latestId = await contractHelper.getProposalCount();
+          const proposalId = Number(latestId);
+          await linkInitiativeToProposal(proposalId);
+          setProposalInitiativeMapping(proposalId, {
+            initiativeId: pendingInitiative.initiativeId,
+            category: pendingInitiative.category,
+            budgetId: pendingInitiative.budgetId || null,
+          });
+        } catch (linkError) {
+          console.error("⚠️ Failed to link initiative:", linkError);
+        }
+      }
+
       // Reset form and refresh proposals
       console.log("🔄 [DEBUG] Resetting form and reloading proposals...");
       setNewProposal({
@@ -191,12 +300,97 @@ const ProposalCard = () => {
       console.log("⏳ Waiting for confirmation...");
       await tx.wait();
       console.log("✅ Proposal executed successfully!");
+      await syncBudgetAfterExecution(proposalId);
       alert("Proposal executed successfully!");
       await loadProposals(); // Refresh proposals
     } catch (error) {
       console.error("❌ Error executing proposal:", error);
       alert("Error executing proposal: " + error.message);
     }
+  };
+
+  const linkInitiativeToProposal = async (proposalId) => {
+    if (!budgetManager || !pendingInitiative) return;
+    try {
+      const tx = await budgetManager.linkToProposal(
+        pendingInitiative.initiativeId,
+        proposalId
+      );
+      await tx.wait();
+      console.log(
+        `🔗 Initiative ${pendingInitiative.initiativeId} linked to proposal ${proposalId}`
+      );
+      setPendingInitiative(null);
+    } catch (error) {
+      console.error("⚠️ Failed to link initiative to proposal:", error);
+    }
+  };
+
+  const syncBudgetAfterExecution = async (proposalId) => {
+    if (!budgetManager) return;
+    try {
+      setSyncingBudget(true);
+      let initiativeMeta = getProposalInitiativeMapping(proposalId);
+
+      if (!initiativeMeta) {
+        initiativeMeta = await findInitiativeByProposal(proposalId);
+      }
+
+      if (!initiativeMeta) {
+        console.log(
+          "ℹ️ No initiative linked to this proposal, skipping budget sync"
+        );
+        return;
+      }
+
+      if (initiativeMeta.funded) {
+        console.log("ℹ️ Initiative already funded");
+        clearProposalInitiativeMapping(proposalId);
+        return;
+      }
+
+      let budgetId = initiativeMeta.budgetId;
+      if (!budgetId || budgetId === 0) {
+        const activeBudgetId = await budgetManager.getActiveBudgetForCategory(
+          initiativeMeta.category
+        );
+        budgetId = Number(activeBudgetId);
+      }
+
+      const tx = await budgetManager.markInitiativeFunded(
+        initiativeMeta.initiativeId || initiativeMeta.id,
+        budgetId || 0
+      );
+      await tx.wait();
+      clearProposalInitiativeMapping(proposalId);
+      console.log("💸 Budget updated for initiative", initiativeMeta);
+    } catch (error) {
+      console.error("⚠️ Failed to sync budget after execution:", error);
+    } finally {
+      setSyncingBudget(false);
+    }
+  };
+
+  const findInitiativeByProposal = async (proposalId) => {
+    try {
+      const total = await budgetManager.initiativeCount();
+      for (let i = 1; i <= Number(total); i++) {
+        const initiative = await budgetManager.getInitiative(i);
+        if (Number(initiative[9]) === Number(proposalId)) {
+          return {
+            id: Number(initiative[0]),
+            initiativeId: Number(initiative[0]),
+            category: initiative[2],
+            budgetId: null,
+            funded: initiative[8],
+            proposalId: Number(initiative[9]),
+          };
+        }
+      }
+    } catch (error) {
+      console.error("⚠️ Failed to search initiatives by proposal:", error);
+    }
+    return null;
   };
 
   const getStatusBadge = (proposal) => {

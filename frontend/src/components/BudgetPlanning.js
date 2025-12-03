@@ -28,6 +28,36 @@ const BudgetPlanning = () => {
     recipient: "",
   });
 
+  const getActiveBudgetIdForCategory = (category) => {
+    const relevantBudgets = budgets
+      .filter((b) => b.category === category)
+      .sort((a, b) => b.id - a.id);
+    const active = relevantBudgets.find((b) => b.active);
+    return active?.id || null;
+  };
+
+  const handleInitiativeProposal = (initiative) => {
+    const amountToUse =
+      parseFloat(initiative.approvedAmount) > 0
+        ? initiative.approvedAmount
+        : initiative.requestedAmount;
+    const budgetId = getActiveBudgetIdForCategory(initiative.category);
+
+    window.dispatchEvent(
+      new CustomEvent("create-proposal", {
+        detail: {
+          initiativeId: initiative.id,
+          initiativeName: initiative.name,
+          category: initiative.category,
+          amount: amountToUse,
+          description: initiative.description,
+          recipient: initiative.recipient,
+          budgetId,
+        },
+      })
+    );
+  };
+
   useEffect(() => {
     if (provider && signer) {
       initializeContract();
@@ -607,9 +637,12 @@ const BudgetPlanning = () => {
                       </button>
                     )}
                     {initiative.approved && !initiative.funded && (
-                      <span className="text-gray-500 text-xs italic">
+                      <button
+                        onClick={() => handleInitiativeProposal(initiative)}
+                        className="text-blue-600 hover:text-blue-800 text-xs font-medium"
+                      >
                         Create Proposal →
-                      </span>
+                      </button>
                     )}
                     {initiative.funded && (
                       <span className="text-green-600 text-xs font-medium">

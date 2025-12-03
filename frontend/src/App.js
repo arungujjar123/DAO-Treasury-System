@@ -25,6 +25,7 @@ function App() {
     loading,
   } = useWeb3();
   const [activeTab, setActiveTab] = useState("dashboard");
+  const [proposalPrefill, setProposalPrefill] = useState(null);
 
   const navigation = [
     { id: "dashboard", name: "Dashboard", component: Dashboard },
@@ -38,9 +39,42 @@ function App() {
 
   const renderActiveComponent = () => {
     const activeNav = navigation.find((nav) => nav.id === activeTab);
+    if (activeNav?.id === "proposals") {
+      return (
+        <ProposalCard
+          proposalPrefill={proposalPrefill}
+          onPrefillConsumed={() => setProposalPrefill(null)}
+        />
+      );
+    }
     const Component = activeNav?.component || Dashboard;
     return <Component />;
   };
+
+  useEffect(() => {
+    const handleNavigate = (event) => {
+      const destination = event?.detail;
+      if (typeof destination === "string") {
+        setActiveTab(destination);
+      }
+    };
+
+    const handleCreateProposal = (event) => {
+      const detail = event?.detail;
+      if (detail) {
+        setProposalPrefill(detail);
+      }
+      setActiveTab("proposals");
+    };
+
+    window.addEventListener("navigate", handleNavigate);
+    window.addEventListener("create-proposal", handleCreateProposal);
+
+    return () => {
+      window.removeEventListener("navigate", handleNavigate);
+      window.removeEventListener("create-proposal", handleCreateProposal);
+    };
+  }, []);
 
   return (
     <Router>
