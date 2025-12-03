@@ -131,7 +131,46 @@
     },
     {
       "inputs": [],
+      "name": "DEFAULT_VOTING_PERIOD",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
       "name": "MAJORITY_PERCENTAGE",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "MAX_VOTING_PERIOD",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "MIN_VOTING_PERIOD",
       "outputs": [
         {
           "internalType": "uint256",
@@ -169,19 +208,6 @@
       "type": "function"
     },
     {
-      "inputs": [],
-      "name": "VOTING_PERIOD",
-      "outputs": [
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
       "inputs": [
         {
           "internalType": "address payable",
@@ -197,6 +223,11 @@
           "internalType": "string",
           "name": "description",
           "type": "string"
+        },
+        {
+          "internalType": "uint256",
+          "name": "duration",
+          "type": "uint256"
         }
       ],
       "name": "createProposal",

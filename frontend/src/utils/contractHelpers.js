@@ -102,6 +102,40 @@ export class ContractHelper {
     console.log(`   - GovernanceToken: ${contractAddresses.governanceToken}`);
     console.log(`   - TreasuryDAO: ${contractAddresses.treasuryDAO}`);
 
+    // Sanity check: ensure contracts exist on the connected network
+    try {
+      const [codeToken, codeDao, net] = await Promise.all([
+        this.provider.getCode(contractAddresses.governanceToken),
+        this.provider.getCode(contractAddresses.treasuryDAO),
+        this.provider.getNetwork(),
+      ]);
+      if (codeToken === "0x" || codeDao === "0x") {
+        console.error(
+          "❌ No contract code found at configured addresses on this network"
+        );
+        console.error("   - chainId:", net.chainId, "name:", net.name);
+        console.error(
+          "   - governanceToken:",
+          contractAddresses.governanceToken,
+          "code:",
+          codeToken
+        );
+        console.error(
+          "   - treasuryDAO:",
+          contractAddresses.treasuryDAO,
+          "code:",
+          codeDao
+        );
+        throw new Error(
+          `Contracts not deployed on current network (chainId ${net.chainId}). ` +
+            `Switch wallet network or redeploy and update deployments.json.`
+        );
+      }
+    } catch (networkCheckError) {
+      // Re-throw to stop initialization; caller can handle and show a toast/UI message
+      throw networkCheckError;
+    }
+
     // Initialize contract instances with loaded ABIs
     this.governanceToken = new ethers.Contract(
       contractAddresses.governanceToken,
@@ -269,11 +303,12 @@ export class ContractHelper {
     return tx;
   }
 
-  async createProposal(recipient, amount, description) {
+  async createProposal(recipient, amount, description, durationSeconds = 0) {
     console.log("🚀 [DEBUG] createProposal called with:");
     console.log("   - recipient:", recipient);
     console.log("   - amount:", amount);
     console.log("   - description:", description);
+    console.log("   - durationSeconds:", durationSeconds);
 
     if (!this.treasuryDAO || !this.signer) {
       console.error(
@@ -316,7 +351,8 @@ export class ContractHelper {
       const gasEstimate = await this.treasuryDAO.createProposal.estimateGas(
         normalizedRecipient,
         ethers.parseEther(amount.toString()),
-        description
+        description,
+        durationSeconds
       );
       console.log(
         "✅ [DEBUG] Gas estimate successful:",
@@ -345,7 +381,8 @@ export class ContractHelper {
       const tx = await this.treasuryDAO.createProposal(
         normalizedRecipient,
         ethers.parseEther(amount.toString()),
-        description
+        description,
+        durationSeconds
       );
 
       console.log("✅ [DEBUG] Transaction sent successfully!");

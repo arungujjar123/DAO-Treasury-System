@@ -30,7 +30,9 @@ contract TreasuryDAO is ReentrancyGuard {
     // State variables
     mapping(uint256 => Proposal) public proposals;
     uint256 public proposalCount;
-    uint256 public constant VOTING_PERIOD = 3 days;
+    uint256 public constant DEFAULT_VOTING_PERIOD = 3 days;
+    uint256 public constant MIN_VOTING_PERIOD = 1 minutes;
+    uint256 public constant MAX_VOTING_PERIOD = 30 days;
     uint256 public constant QUORUM_PERCENTAGE = 10; // 10% of total supply needed for quorum
     uint256 public constant MAJORITY_PERCENTAGE = 51; // 51% majority needed to pass
     // Token minting rate: how many GOV tokens per 1 ETH deposited
@@ -110,20 +112,28 @@ contract TreasuryDAO is ReentrancyGuard {
      * @param recipient Address to receive funds if proposal passes
      * @param amount Amount of ETH to send
      * @param description Description of the proposal
+     * @param duration Voting duration in seconds
      */
     function createProposal(
         address payable recipient,
         uint256 amount,
-        string memory description
+        string memory description,
+        uint256 duration
     ) external onlyTokenHolder {
         require(recipient != address(0), "Invalid recipient");
         require(amount > 0, "Amount must be greater than 0");
         require(amount <= address(this).balance, "Insufficient treasury balance");
         require(bytes(description).length > 0, "Description cannot be empty");
+        if (duration == 0) {
+            duration = DEFAULT_VOTING_PERIOD;
+        } else {
+            require(duration >= MIN_VOTING_PERIOD, "Duration too short");
+            require(duration <= MAX_VOTING_PERIOD, "Duration too long");
+        }
         
         proposalCount++;
         uint256 proposalId = proposalCount;
-        uint256 deadline = block.timestamp + VOTING_PERIOD;
+        uint256 deadline = block.timestamp + duration;
         
         Proposal storage newProposal = proposals[proposalId];
         newProposal.id = proposalId;

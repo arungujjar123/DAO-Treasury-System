@@ -174,6 +174,24 @@ const BudgetPlanning = () => {
     }
   };
 
+  const handleApproveInitiative = async (initiativeId, requestedAmount) => {
+    if (!budgetManager) return;
+
+    try {
+      const tx = await budgetManager.approveInitiative(
+        initiativeId,
+        ethers.parseEther(requestedAmount)
+      );
+
+      await tx.wait();
+      alert("Initiative approved! Now create a proposal in the Proposals tab.");
+      await loadData();
+    } catch (error) {
+      console.error("Error approving initiative:", error);
+      alert("Error approving initiative: " + error.message);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center items-center py-12">
@@ -532,6 +550,9 @@ const BudgetPlanning = () => {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Created
                 </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Actions
+                </th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
@@ -570,6 +591,31 @@ const BudgetPlanning = () => {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {initiative.createdAt.toLocaleDateString()}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm">
+                    {!initiative.approved && !initiative.funded && (
+                      <button
+                        onClick={() =>
+                          handleApproveInitiative(
+                            initiative.id,
+                            initiative.requestedAmount
+                          )
+                        }
+                        className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-xs font-medium"
+                      >
+                        Approve
+                      </button>
+                    )}
+                    {initiative.approved && !initiative.funded && (
+                      <span className="text-gray-500 text-xs italic">
+                        Create Proposal →
+                      </span>
+                    )}
+                    {initiative.funded && (
+                      <span className="text-green-600 text-xs font-medium">
+                        ✓ Complete
+                      </span>
+                    )}
                   </td>
                 </tr>
               ))}

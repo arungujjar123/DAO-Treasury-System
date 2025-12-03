@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { ethers } from "ethers";
 import { useWeb3 } from "../hooks/useWeb3";
 import { ContractHelper, formatNumber } from "../utils/contractHelpers";
 
@@ -58,7 +59,7 @@ const Dashboard = () => {
         contractHelper.getProposalCount(),
         provider
           .getBalance(account)
-          .then((balance) => formatNumber(parseFloat(balance) / 1e18, 4)),
+          .then((balance) => formatNumber(ethers.formatEther(balance), 4)),
       ]);
 
       setDashboardData({

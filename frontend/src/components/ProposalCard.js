@@ -19,6 +19,8 @@ const ProposalCard = () => {
     recipient: "",
     amount: "",
     description: "",
+    durationValue: "3",
+    durationUnit: "days",
   });
 
   useEffect(() => {
@@ -101,10 +103,30 @@ const ProposalCard = () => {
       setCreating(true);
       console.log("🔧 [DEBUG] Calling contractHelper.createProposal...");
 
+      const unitMap = {
+        minutes: 60,
+        hours: 60 * 60,
+        days: 60 * 60 * 24,
+      };
+      const unitSeconds = unitMap[newProposal.durationUnit] || 0;
+      let durationSeconds =
+        parseFloat(newProposal.durationValue || "0") * unitSeconds;
+      if (Number.isNaN(durationSeconds) || durationSeconds <= 0) {
+        durationSeconds = 0; // fallback to contract default
+      } else {
+        const MIN_DURATION = 60;
+        const MAX_DURATION = 60 * 60 * 24 * 30;
+        durationSeconds = Math.max(
+          MIN_DURATION,
+          Math.min(MAX_DURATION, Math.floor(durationSeconds))
+        );
+      }
+
       const tx = await contractHelper.createProposal(
         newProposal.recipient,
         newProposal.amount,
-        newProposal.description
+        newProposal.description,
+        Math.floor(durationSeconds)
       );
 
       console.log("✅ [DEBUG] Transaction object received:", tx);
@@ -123,7 +145,13 @@ const ProposalCard = () => {
 
       // Reset form and refresh proposals
       console.log("🔄 [DEBUG] Resetting form and reloading proposals...");
-      setNewProposal({ recipient: "", amount: "", description: "" });
+      setNewProposal({
+        recipient: "",
+        amount: "",
+        description: "",
+        durationValue: "3",
+        durationUnit: "days",
+      });
       setShowCreateForm(false);
       await loadProposals();
 
@@ -153,6 +181,21 @@ const ProposalCard = () => {
     } finally {
       setCreating(false);
       console.log("🏁 [DEBUG] handleCreateProposal finished");
+    }
+  };
+
+  const handleExecuteProposal = async (proposalId) => {
+    try {
+      console.log("🚀 Executing proposal:", proposalId);
+      const tx = await contractHelper.executeProposal(proposalId);
+      console.log("⏳ Waiting for confirmation...");
+      await tx.wait();
+      console.log("✅ Proposal executed successfully!");
+      alert("Proposal executed successfully!");
+      await loadProposals(); // Refresh proposals
+    } catch (error) {
+      console.error("❌ Error executing proposal:", error);
+      alert("Error executing proposal: " + error.message);
     }
   };
 
@@ -283,6 +326,42 @@ const ProposalCard = () => {
                 placeholder="Describe the purpose of this funding request..."
                 className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
               />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">
+                Voting Duration
+              </label>
+              <div className="mt-1 grid grid-cols-3 gap-3">
+                <input
+                  type="number"
+                  min="1"
+                  id="durationValue"
+                  value={newProposal.durationValue}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    console.log("⏱️ [DEBUG] Duration value changed:", value);
+                    setNewProposal({ ...newProposal, durationValue: value });
+                  }}
+                  className="col-span-2 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                />
+                <select
+                  id="durationUnit"
+                  value={newProposal.durationUnit}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    console.log("⏱️ [DEBUG] Duration unit changed:", value);
+                    setNewProposal({ ...newProposal, durationUnit: value });
+                  }}
+                  className="col-span-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                >
+                  <option value="minutes">Minutes</option>
+                  <option value="hours">Hours</option>
+                  <option value="days">Days</option>
+                </select>
+              </div>
+              <p className="text-xs text-gray-500 mt-1">
+                Default is 3 days. Minimum 1 minute, maximum 30 days.
+              </p>
             </div>
             <button
               onClick={() => {
@@ -444,13 +523,7 @@ const ProposalCard = () => {
                   new Date() > proposal.deadline &&
                   proposal.hasPassed && (
                     <button
-                      onClick={() =>
-                        window.dispatchEvent(
-                          new CustomEvent("executeProposal", {
-                            detail: proposal.id,
-                          })
-                        )
-                      }
+                      onClick={() => handleExecuteProposal(proposal.id)}
                       className="flex-1 bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-md text-sm font-medium transition-colors"
                     >
                       Execute Proposal
